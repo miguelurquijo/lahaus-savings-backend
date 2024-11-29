@@ -9,7 +9,6 @@ app = Flask(__name__)
 CORS(app)
 
 # Google Sheets API configuration
-# Google Sheets API configuration
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 
@@ -54,7 +53,7 @@ def register():
                 # Append row to Google Sheet
                 result = sheets_service.spreadsheets().values().append(
                     spreadsheetId=SPREADSHEET_ID,
-                    range=RANGE_NAME,
+                    range="raw_registers!A:D",
                     valueInputOption='RAW',
                     insertDataOption='INSERT_ROWS',
                     body=body
