@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from werkzeug.utils import quote as url_quote
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import os
@@ -8,83 +7,71 @@ import json
 from datetime import datetime
 
 app = Flask(__name__)
-
-# Configure CORS to allow requests from specific origins
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app)
 
 # Google Sheets API configuration
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')  # Make sure this is set in Heroku
 
-# Load credentials from the environment variable
-try:
-    # Read the service account credentials from the environment variable
-    google_credentials = os.environ.get('GOOGLE_CREDENTIALS')
-    if not google_credentials:
-        raise Exception("GOOGLE_CREDENTIALS environment variable is not set.")
-    
-    credentials_info = json.loads(google_credentials)
-    credentials = service_account.Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
-    sheets_service = build('sheets', 'v4', credentials=credentials)
-    print("Successfully connected to Google Sheets API")
-except Exception as e:
-    print(f"Error connecting to Google Sheets API: {e}")
-    sheets_service = None
-
+def get_sheets_service():
+    """Create and return Google Sheets service object"""
+    try:
+        # Get credentials from environment variable
+        credentials_json = os.getenv('GOOGLE_CREDENTIALS')
+        if not credentials_json:
+            raise ValueError("GOOGLE_CREDENTIALS environment variable not set")
+        
+        credentials_info = json.loads(credentials_json)
+        credentials = service_account.Credentials.from_service_account_info(
+            credentials_info, 
+            scopes=SCOPES
+        )
+        
+        return build('sheets', 'v4', credentials=credentials)
+    except Exception as e:
+        print(f"Error creating sheets service: {e}")
+        return None
 
 @app.route('/api/register', methods=['POST'])
 def register():
-    """
-    Handles user registration by receiving POST data and saving it to Google Sheets.
-    """
+    """Handle user registration"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'message': 'Invalid JSON input'}), 400
 
-        print("Received data:", data)
+        # Get spreadsheet ID from environment
+        spreadsheet_id = os.getenv('SPREADSHEET_ID')
+        if not spreadsheet_id:
+            return jsonify({'success': False, 'message': 'Spreadsheet ID not configured'}), 500
 
-        # Create timestamp
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Create sheets service
+        service = get_sheets_service()
+        if not service:
+            return jsonify({'success': False, 'message': 'Could not connect to Google Sheets'}), 503
 
-        # Prepare the row to add to Google Sheets
+        # Prepare row data
         row = [
-            timestamp,
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             data.get('name', ''),
             data.get('phone', ''),
             data.get('email', '')
         ]
 
-        if sheets_service:
-            try:
-                # Prepare the request body for Google Sheets
-                body = {'values': [row]}
-                
-                # Append the row to the Google Sheet
-                result = sheets_service.spreadsheets().values().append(
-                    spreadsheetId=SPREADSHEET_ID,
-                    range="raw_registers!A:D",  # Adjust the range based on your sheet
-                    valueInputOption='RAW',
-                    insertDataOption='INSERT_ROWS',
-                    body=body
-                ).execute()
-                
-                print(f"Data added to Google Sheets: {result}")
-                
-                return jsonify({'success': True, 'message': 'Registration successful'})
-            except Exception as e:
-                print(f"Error writing to Google Sheets: {e}")
-                return jsonify({'success': False, 'message': 'Failed to save data to Google Sheets.'}), 500
-        else:
-            print("Google Sheets service not available.")
-            return jsonify({'success': False, 'message': 'Google Sheets service is unavailable.'}), 503
+        # Append to sheet
+        result = service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range='raw_registers!A:D',
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body={'values': [row]}
+        ).execute()
+
+        return jsonify({'success': True, 'message': 'Registration successful'})
 
     except Exception as e:
-        print(f"Error processing registration: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        print(f"Error in registration: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    # Use the PORT environment variable (required for Heroku)
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
