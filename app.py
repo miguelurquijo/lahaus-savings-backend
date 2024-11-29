@@ -3,10 +3,15 @@ from datetime import datetime
 from flask_cors import CORS
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from flask_cors import CORS, cross_origin
+
 import os
 
 app = Flask(__name__)
 CORS(app)
+
+# Configure CORS with specific settings
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Google Sheets API configuration
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -27,6 +32,7 @@ except Exception as e:
     sheets_service = None
 
 @app.route('/api/register', methods=['POST'])
+@cross_origin()  # Allow CORS for this route
 def register():
     try:
         data = request.json
