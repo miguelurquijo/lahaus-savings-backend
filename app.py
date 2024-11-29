@@ -7,8 +7,8 @@ import os
 
 app = Flask(__name__)
 
-# Configure CORS with specific settings
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# Apply CORS to all routes with specific allowed origins
+CORS(app, resources={r"/*": {"origins": "http://127.0.0.1:52538"}})
 
 # Google Sheets API configuration
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
