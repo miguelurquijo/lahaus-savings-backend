@@ -1,14 +1,11 @@
 from flask import Flask, request, jsonify
 from datetime import datetime
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from flask_cors import CORS, cross_origin
-
 import os
 
 app = Flask(__name__)
-CORS(app)
 
 # Configure CORS with specific settings
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -16,8 +13,6 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Google Sheets API configuration
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
-
-
 
 # Load credentials from service account file
 try:
@@ -31,11 +26,16 @@ except Exception as e:
     print(f"Error connecting to Google Sheets API: {e}")
     sheets_service = None
 
-@app.route('/api/register', methods=['POST'])
+@app.route('/api/register', methods=['POST', 'OPTIONS'])
 @cross_origin()  # Allow CORS for this route
 def register():
+    if request.method == 'OPTIONS':
+        # Respond to preflight OPTIONS request
+        response = app.make_default_options_response()
+        return response
+
     try:
-        data = request.json
+        data = request.get_json()
         print("Received data:", data)
         
         # Create timestamp
