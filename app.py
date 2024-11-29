@@ -13,27 +13,7 @@ CORS(app)
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 
-# Get credentials from environment variable
-def get_credentials():
-    try:
-        # Get the service account info from environment variable
-        service_account_info = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '{}'))
-        credentials = service_account.Credentials.from_service_account_info(
-            service_account_info,
-            scopes=SCOPES
-        )
-        return credentials
-    except Exception as e:
-        print(f"Error getting credentials: {e}")
-        return None
 
-try:
-    credentials = get_credentials()
-    sheets_service = build('sheets', 'v4', credentials=credentials) if credentials else None
-    print("Successfully connected to Google Sheets API")
-except Exception as e:
-    print(f"Error connecting to Google Sheets API: {e}")
-    sheets_service = None
 
 # Load credentials from service account file
 try:
