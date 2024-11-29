@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 gsheets_client_secret.json
 .env
+gsheets_client_secret.json
+gsheets_client_secreat.json
